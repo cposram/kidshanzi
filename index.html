@@ -1,0 +1,1036 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <title>生字筆順闖關大挑戰</title>
+  <script src="https://cdn.jsdelivr.net/npm/hanzi-writer@3.5/dist/hanzi-writer.min.js"></script>
+  <style>
+    :root {
+      --bg: #f0f4f8;
+      --card: #ffffff;
+      --primary: #2563eb;
+      --primary-dark: #1d4ed8;
+      --accent: #f59e0b;
+      --danger: #ef4444;
+      --success: #10b981;
+      --text: #1e293b;
+      --muted: #64748b;
+      --border: #cbd5e1;
+    }
+
+    * {
+      box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100dvh;
+      overflow: hidden;
+      overscroll-behavior: none;
+      background-color: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "PingFang TC", "Microsoft JhengHei", sans-serif;
+    }
+
+    .screen {
+      display: none;
+      width: 100%;
+      height: 100dvh;
+      padding: max(16px, env(safe-area-inset-top)) 20px max(16px, env(safe-area-inset-bottom));
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .screen.active {
+      display: flex;
+    }
+
+    /* ========== 1. 出題設定畫面 ========== */
+    .setup-card {
+      background: var(--card);
+      width: 100%;
+      max-width: 560px;
+      border-radius: 24px;
+      padding: 28px;
+      box-shadow: 0 10px 30px rgba(15, 23, 42, 0.08);
+      text-align: center;
+    }
+
+    .setup-card h1 {
+      margin: 0 0 8px;
+      font-size: 28px;
+      color: var(--primary);
+    }
+
+    .setup-card p {
+      margin: 0 0 18px;
+      color: var(--muted);
+      font-size: 15px;
+    }
+
+    textarea {
+      width: 100%;
+      height: 120px;
+      border: 2px solid var(--border);
+      border-radius: 16px;
+      padding: 14px;
+      font-size: 24px;
+      letter-spacing: 4px;
+      color: var(--text);
+      resize: none;
+      outline: none;
+      user-select: text;
+      -webkit-user-select: text;
+      font-family: inherit;
+    }
+
+    textarea:focus {
+      border-color: var(--primary);
+    }
+
+    .preview-bar {
+      margin: 12px 0 20px;
+      min-height: 36px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-wrap: wrap;
+      gap: 6px;
+      font-size: 15px;
+      color: var(--muted);
+    }
+
+    .char-pill {
+      background: #eff6ff;
+      color: var(--primary);
+      font-weight: 700;
+      padding: 4px 10px;
+      border-radius: 8px;
+      font-size: 18px;
+    }
+
+    .options-row {
+      display: flex;
+      justify-content: center;
+      gap: 16px;
+      margin-bottom: 20px;
+      font-size: 15px;
+      color: var(--text);
+    }
+
+    .options-row label {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      cursor: pointer;
+    }
+
+    .btn {
+      border: none;
+      border-radius: 16px;
+      padding: 16px 32px;
+      font-size: 20px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: transform 0.1s, background-color 0.2s;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+
+    .btn:active {
+      transform: scale(0.96);
+    }
+
+    .btn-primary {
+      background: var(--primary);
+      color: #fff;
+      width: 100%;
+      box-shadow: 0 6px 16px rgba(37, 99, 235, 0.3);
+    }
+
+    .btn-primary:disabled {
+      background: #94a3b8;
+      box-shadow: none;
+      cursor: not-allowed;
+    }
+
+    /* ========== 2. 練習闖關畫面 ========== */
+    .practice-header {
+      width: 100%;
+      max-width: 680px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+
+    .btn-exit {
+      background: #e2e8f0;
+      color: #475569;
+      border: none;
+      border-radius: 12px;
+      padding: 8px 14px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    .progress-wrap {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .progress-text {
+      display: flex;
+      justify-content: space-between;
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--text);
+    }
+
+    .progress-track {
+      width: 100%;
+      height: 12px;
+      background: #cbd5e1;
+      border-radius: 999px;
+      overflow: hidden;
+    }
+
+    .progress-fill {
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, #3b82f6, #10b981);
+      border-radius: 999px;
+      transition: width 0.3s ease;
+    }
+
+    .status-strip {
+      height: 36px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 14px;
+      margin-bottom: 10px;
+    }
+
+    .badge {
+      padding: 5px 14px;
+      border-radius: 999px;
+      font-size: 15px;
+      font-weight: 700;
+    }
+
+    .badge-combo {
+      background: #fef3c7;
+      color: #d97706;
+      opacity: 0;
+      transform: scale(0.8);
+      transition: all 0.2s;
+    }
+
+    .badge-combo.show {
+      opacity: 1;
+      transform: scale(1);
+    }
+
+    .badge-alert {
+      background: #fee2e2;
+      color: var(--danger);
+      opacity: 0;
+      transition: opacity 0.15s;
+    }
+
+    .badge-alert.show {
+      opacity: 1;
+    }
+
+    /* 核心寫字框：鎖定 iPad 觸控滑動 */
+    .board-container {
+      position: relative;
+      width: min(74vw, 54vh, 430px);
+      height: min(74vw, 54vh, 430px);
+      background: var(--card);
+      border: 4px solid #334155;
+      border-radius: 24px;
+      box-shadow: 0 12px 32px rgba(15, 23, 42, 0.12);
+      touch-action: none;
+      overflow: hidden;
+      transition: border-color 0.15s, transform 0.15s;
+    }
+
+    .board-container.mistake-flash {
+      border-color: var(--danger);
+      background: #fff5f5;
+      animation: shake 0.32s ease-in-out;
+    }
+
+    .board-container.success-flash {
+      border-color: var(--success);
+      background: #f0fdf4;
+    }
+
+    @keyframes shake {
+      0%, 100% { transform: translateX(0); }
+      25% { transform: translateX(-10px); }
+      50% { transform: translateX(10px); }
+      75% { transform: translateX(-6px); }
+    }
+
+    .grid-svg {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+    }
+
+    #writer-mount {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      touch-action: none;
+    }
+
+    .practice-footer {
+      margin-top: 16px;
+      display: flex;
+      gap: 12px;
+    }
+
+    .btn-tool {
+      background: var(--card);
+      color: var(--text);
+      border: 2px solid var(--border);
+      border-radius: 14px;
+      padding: 10px 20px;
+      font-size: 16px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    .btn-tool:active {
+      background: #e2e8f0;
+    }
+
+    /* ========== 3. 頒獎結算畫面 ========== */
+    #confetti-canvas {
+      position: fixed;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: 10;
+    }
+
+    .result-card {
+      position: relative;
+      z-index: 20;
+      background: var(--card);
+      width: 100%;
+      max-width: 520px;
+      border-radius: 28px;
+      padding: 30px 26px;
+      box-shadow: 0 16px 40px rgba(15, 23, 42, 0.14);
+      text-align: center;
+    }
+
+    .trophy-icon {
+      font-size: 64px;
+      line-height: 1;
+      margin-bottom: 6px;
+      animation: popIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+
+    @keyframes popIn {
+      0% { transform: scale(0.3); opacity: 0; }
+      100% { transform: scale(1); opacity: 1; }
+    }
+
+    .stars-row {
+      font-size: 36px;
+      letter-spacing: 6px;
+      margin-bottom: 8px;
+    }
+
+    .score-display {
+      font-size: 64px;
+      font-weight: 900;
+      color: var(--primary);
+      line-height: 1.1;
+      margin: 4px 0;
+    }
+
+    .score-display span {
+      font-size: 24px;
+      font-weight: 700;
+      color: var(--muted);
+    }
+
+    .praise-title {
+      font-size: 22px;
+      font-weight: 800;
+      color: var(--text);
+      margin-bottom: 16px;
+    }
+
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+      background: #f8fafc;
+      padding: 14px;
+      border-radius: 16px;
+      margin-bottom: 18px;
+    }
+
+    .stat-item strong {
+      display: block;
+      font-size: 20px;
+      color: var(--text);
+    }
+
+    .stat-item span {
+      font-size: 13px;
+      color: var(--muted);
+    }
+
+    .wrong-box {
+      background: #fffbeb;
+      border: 1.5px solid #fde68a;
+      border-radius: 14px;
+      padding: 12px;
+      margin-bottom: 18px;
+      text-align: left;
+    }
+
+    .wrong-box-title {
+      font-size: 14px;
+      font-weight: 700;
+      color: #b45309;
+      margin-bottom: 8px;
+    }
+
+    .wrong-chars-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .wrong-tag {
+      background: #ffffff;
+      border: 1px solid #fcd34d;
+      color: #92400e;
+      font-size: 20px;
+      font-weight: 700;
+      padding: 4px 12px;
+      border-radius: 10px;
+    }
+
+    .result-actions {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .btn-warning {
+      background: var(--accent);
+      color: #fff;
+      width: 100%;
+      box-shadow: 0 6px 16px rgba(245, 158, 11, 0.3);
+    }
+
+    .btn-secondary {
+      background: #e2e8f0;
+      color: var(--text);
+      width: 100%;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- 畫面 1：家長出題區 -->
+  <section id="screen-setup" class="screen active">
+    <div class="setup-card">
+      <h1>✍️ 生字筆順闖關</h1>
+      <p>貼上今天要練習的國字（不限字數，自動過濾標點符號）</p>
+      <textarea id="input-chars" placeholder="例如：春眠不覺曉，處處聞啼鳥"></textarea>
+      <div class="preview-bar" id="preview-bar">尚未輸入國字</div>
+
+      <div class="options-row">
+        <label>
+          <input type="checkbox" id="opt-outline" checked />
+          顯示淡色字模描紅
+        </label>
+      </div>
+
+      <button id="btn-start" class="btn btn-primary" disabled>🚀 開始闖關練習</button>
+    </div>
+  </section>
+
+  <!-- 畫面 2：小孩連續書寫區 -->
+  <section id="screen-practice" class="screen">
+    <div class="practice-header">
+      <button id="btn-exit" class="btn-exit">✕ 換字</button>
+      <div class="progress-wrap">
+        <div class="progress-text">
+          <span id="progress-label">第 1 / 10 字</span>
+          <span id="stroke-label">筆畫：0 / 0</span>
+        </div>
+        <div class="progress-track">
+          <div id="progress-fill" class="progress-fill"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="status-strip">
+      <div id="badge-combo" class="badge badge-combo">🔥 連擊 x2</div>
+      <div id="badge-alert" class="badge badge-alert">⚠️ 筆順或方向錯囉，再試一次！</div>
+    </div>
+
+    <div id="board-box" class="board-container">
+      <!-- 米字格輔助底線 -->
+      <svg class="grid-svg" viewBox="0 0 100 100" preserveAspectRatio="none">
+        <line x1="0" y1="0" x2="100" y2="100" stroke="#e2e8f0" stroke-width="0.6" stroke-dasharray="2,2" />
+        <line x1="100" y1="0" x2="0" y2="100" stroke="#e2e8f0" stroke-width="0.6" stroke-dasharray="2,2" />
+        <line x1="50" y1="0" x2="50" y2="100" stroke="#cbd5e1" stroke-width="0.8" stroke-dasharray="3,2" />
+        <line x1="0" y1="50" x2="100" y2="50" stroke="#cbd5e1" stroke-width="0.8" stroke-dasharray="3,2" />
+      </svg>
+      <div id="writer-mount"></div>
+    </div>
+
+    <div class="practice-footer">
+      <button id="btn-hint" class="btn-tool">💡 提示這一筆</button>
+      <button id="btn-demo" class="btn-tool">👀 看完整示範</button>
+    </div>
+  </section>
+
+  <!-- 畫面 3：恭喜頒獎結算區 -->
+  <canvas id="confetti-canvas"></canvas>
+  <section id="screen-result" class="screen">
+    <div class="result-card">
+      <div id="trophy-icon" class="trophy-icon">🏆</div>
+      <div id="stars-row" class="stars-row">⭐⭐⭐</div>
+      <div class="score-display"><span id="final-score">100</span><span> 分</span></div>
+      <div id="praise-title" class="praise-title">太神啦！全部一次寫對！</div>
+
+      <div class="stats-grid">
+        <div class="stat-item">
+          <strong id="stat-chars">0</strong>
+          <span>完成字數</span>
+        </div>
+        <div class="stat-item">
+          <strong id="stat-mistakes">0</strong>
+          <span>失誤次數</span>
+        </div>
+        <div class="stat-item">
+          <strong id="stat-combo">0</strong>
+          <span>最高連擊</span>
+        </div>
+      </div>
+
+      <div id="wrong-box" class="wrong-box" style="display: none;">
+        <div class="wrong-box-title">📌 需要加強的生字（點擊可查看）：</div>
+        <div id="wrong-chars-list" class="wrong-chars-list"></div>
+      </div>
+
+      <div class="result-actions">
+        <button id="btn-retry-wrong" class="btn btn-warning" style="display: none;">🎯 只針對錯字再挑戰一次</button>
+        <button id="btn-retry-all" class="btn btn-primary">🔄 全部再練一次</button>
+        <button id="btn-back-setup" class="btn btn-secondary">✏️ 重新輸入新字表</button>
+      </div>
+    </div>
+  </section>
+
+  <script>
+    /* =========================================================
+       1. Web Audio API 音效引擎（免外部音檔，支援 iPad 解鎖）
+       ========================================================= */
+    class SoundEngine {
+      constructor() {
+        this.ctx = null;
+      }
+
+      unlock() {
+        if (!this.ctx) {
+          const AudioCtx = window.AudioContext || window.webkitAudioContext;
+          this.ctx = new AudioCtx();
+        }
+        if (this.ctx.state === 'suspended') {
+          this.ctx.resume();
+        }
+      }
+
+      // 寫錯告警音：「嘟—嘟」低頻雙音
+      playMistake() {
+        if (!this.ctx) return;
+        const now = this.ctx.currentTime;
+        [0, 0.13].forEach((offset, idx) => {
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          osc.type = 'sawtooth';
+          osc.frequency.setValueAtTime(idx === 0 ? 190 : 150, now + offset);
+          gain.gain.setValueAtTime(0.18, now + offset);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + offset + 0.11);
+          osc.connect(gain);
+          gain.connect(this.ctx.destination);
+          osc.start(now + offset);
+          osc.stop(now + offset + 0.11);
+        });
+      }
+
+      // 寫對一筆：隨連擊數微微升調的清脆水滴音
+      playStroke(combo) {
+        if (!this.ctx) return;
+        const now = this.ctx.currentTime;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'sine';
+        const baseFreq = 523.25 * Math.pow(1.03, Math.min(combo, 15)); // C5 往上微升
+        osc.frequency.setValueAtTime(baseFreq, now);
+        osc.frequency.exponentialRampToValueAtTime(baseFreq * 1.25, now + 0.08);
+        gain.gain.setValueAtTime(0.15, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.09);
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.09);
+      }
+
+      // 單字完成：輕快雙音提示
+      playCharDone() {
+        if (!this.ctx) return;
+        const now = this.ctx.currentTime;
+        [587.33, 880].forEach((freq, idx) => {
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          osc.type = 'triangle';
+          osc.frequency.setValueAtTime(freq, now + idx * 0.08);
+          gain.gain.setValueAtTime(0.18, now + idx * 0.08);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.08 + 0.18);
+          osc.connect(gain);
+          gain.connect(this.ctx.destination);
+          osc.start(now + idx * 0.08);
+          osc.stop(now + idx * 0.08 + 0.18);
+        });
+      }
+
+      // 全部過關：歡慶頒獎交響樂
+      playFanfare() {
+        if (!this.ctx) return;
+        const now = this.ctx.currentTime;
+        // 旋律：Do Mi Sol Do(高) - Sol Do(高)
+        const notes = [
+          { f: 523.25, t: 0.00, d: 0.14 },
+          { f: 659.25, t: 0.14, d: 0.14 },
+          { f: 783.99, t: 0.28, d: 0.14 },
+          { f: 1046.50, t: 0.42, d: 0.28 },
+          { f: 783.99, t: 0.72, d: 0.16 },
+          { f: 1046.50, t: 0.90, d: 0.55 }
+        ];
+        notes.forEach(n => {
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          osc.type = 'triangle';
+          osc.frequency.setValueAtTime(n.f, now + n.t);
+          gain.gain.setValueAtTime(0.22, now + n.t);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + n.t + n.d);
+          osc.connect(gain);
+          gain.connect(this.ctx.destination);
+          osc.start(now + n.t);
+          osc.stop(now + n.t + n.d);
+        });
+      }
+    }
+
+    const sound = new SoundEngine();
+
+    /* =========================================================
+       2. 狀態管理與字庫載入器（優先讀取本地教育部 JSON）
+       ========================================================= */
+    const state = {
+      queue: [],
+      currentIndex: 0,
+      writer: null,
+      showOutline: true,
+      combo: 0,
+      maxCombo: 0,
+      totalStrokes: 0,
+      earnedStrokePoints: 0,
+      totalMistakes: 0,
+      currentStrokeMistakes: 0,
+      charStats: [] // [{ char, mistakes }]
+    };
+
+    // 優先抓自己匯出的 ./data/{字}.json，若無該字則自動退回 CDN 備援不中斷
+    function customCharDataLoader(char, onComplete, onError) {
+      fetch(`./data/${encodeURIComponent(char)}.json`)
+        .then(res => {
+          if (!res.ok) throw new Error('Local JSON not found');
+          return res.json();
+        })
+        .then(data => onComplete(data))
+        .catch(() => {
+          fetch(`https://cdn.jsdelivr.net/npm/hanzi-writer-data@2.0/${encodeURIComponent(char)}.json`)
+            .then(res => {
+              if (!res.ok) throw new Error('CDN JSON not found');
+              return res.json();
+            })
+            .then(data => onComplete(data))
+            .catch(err => onError(err));
+        });
+    }
+
+    /* =========================================================
+       3. DOM 元素綁定與出題邏輯
+       ========================================================= */
+    const screens = {
+      setup: document.getElementById('screen-setup'),
+      practice: document.getElementById('screen-practice'),
+      result: document.getElementById('screen-result')
+    };
+
+    function showScreen(name) {
+      Object.values(screens).forEach(el => el.classList.remove('active'));
+      screens[name].classList.add('active');
+    }
+
+    const inputEl = document.getElementById('input-chars');
+    const previewEl = document.getElementById('preview-bar');
+    const btnStart = document.getElementById('btn-start');
+
+    function extractChineseChars(rawText) {
+      const matches = rawText.match(/[\u4e00-\u9fff\u3400-\u4dbf]/g);
+      return matches ? matches : [];
+    }
+
+    function updatePreview() {
+      const chars = extractChineseChars(inputEl.value);
+      if (chars.length === 0) {
+        previewEl.innerHTML = '尚未輸入國字';
+        btnStart.disabled = true;
+      } else {
+        previewEl.innerHTML = `共 <strong>${chars.length}</strong> 個字：` +
+          chars.map(c => `<span class="char-pill">${c}</span>`).join('');
+        btnStart.disabled = false;
+      }
+    }
+
+    // 支援網址參數 ?words=春眠不覺曉 或 localStorage 自動還原
+    const urlParams = new URLSearchParams(window.location.search);
+    const savedWords = urlParams.get('words') || localStorage.getItem('hanzi_last_words') || '';
+    if (savedWords) {
+      inputEl.value = savedWords;
+      updatePreview();
+    }
+
+    inputEl.addEventListener('input', updatePreview);
+
+    btnStart.addEventListener('click', () => {
+      sound.unlock(); // 關鍵：在點擊當下解鎖 iPad 音效
+      const chars = extractChineseChars(inputEl.value);
+      if (chars.length === 0) return;
+      localStorage.setItem('hanzi_last_words', inputEl.value);
+      state.showOutline = document.getElementById('opt-outline').checked;
+      startSession(chars);
+    });
+
+    /* =========================================================
+       4. 連續練習核心引擎
+       ========================================================= */
+    const boardBox = document.getElementById('board-box');
+    const writerMount = document.getElementById('writer-mount');
+    const badgeCombo = document.getElementById('badge-combo');
+    const badgeAlert = document.getElementById('badge-alert');
+    let alertTimer = null;
+
+    function startSession(charArray) {
+      state.queue = charArray;
+      state.currentIndex = 0;
+      state.combo = 0;
+      state.maxCombo = 0;
+      state.totalStrokes = 0;
+      state.earnedStrokePoints = 0;
+      state.totalMistakes = 0;
+      state.charStats = charArray.map(c => ({ char: c, mistakes: 0 }));
+
+      updateComboUI();
+      badgeAlert.classList.remove('show');
+      showScreen('practice');
+      loadCurrentCharacter();
+    }
+
+    function updateComboUI() {
+      if (state.combo >= 2) {
+        badgeCombo.textContent = `🔥 連擊 x${state.combo}`;
+        badgeCombo.classList.add('show');
+      } else {
+        badgeCombo.classList.remove('show');
+      }
+    }
+
+    function triggerMistakeFeedback() {
+      sound.playMistake();
+      boardBox.classList.remove('mistake-flash');
+      void boardBox.offsetWidth; // 強制重繪讓動畫可連續觸發
+      boardBox.classList.add('mistake-flash');
+
+      badgeAlert.classList.add('show');
+      clearTimeout(alertTimer);
+      alertTimer = setTimeout(() => {
+        badgeAlert.classList.remove('show');
+      }, 1400);
+    }
+
+    function loadCurrentCharacter() {
+      const char = state.queue[state.currentIndex];
+      const total = state.queue.length;
+
+      document.getElementById('progress-label').textContent = `第 ${state.currentIndex + 1} / ${total} 字`;
+      document.getElementById('progress-fill').style.width = `${(state.currentIndex / total) * 100}%`;
+      document.getElementById('stroke-label').textContent = '載入筆順中...';
+
+      boardBox.classList.remove('mistake-flash', 'success-flash');
+      writerMount.innerHTML = '';
+      state.currentStrokeMistakes = 0;
+
+      const size = boardBox.clientWidth;
+
+      state.writer = HanziWriter.create('writer-mount', char, {
+        width: size,
+        height: size,
+        padding: Math.round(size * 0.08),
+        showOutline: state.showOutline,
+        strokeColor: '#1e293b',
+        outlineColor: '#cbd5e1',
+        highlightColor: '#3b82f6',
+        drawingColor: '#2563eb',
+        drawingWidth: Math.max(14, Math.round(size * 0.048)), // 加粗筆跡適合觸控與手寫筆
+        showHintAfterMisses: 2, // 錯 2 次自動演示該筆，防卡關
+        highlightOnComplete: true,
+        charDataLoader: customCharDataLoader,
+        onLoadCharDataSuccess: (data) => {
+          const strokeCount = data.strokes.length;
+          document.getElementById('stroke-label').textContent = `筆畫：0 / ${strokeCount}`;
+          runQuiz(strokeCount);
+        },
+        onLoadCharDataError: () => {
+          // 若遇極罕見字無資料則自動跳過，確保流程不中斷
+          nextCharacter();
+        }
+      });
+    }
+
+    function runQuiz(strokeCount) {
+      state.writer.quiz({
+        onMistake: () => {
+          state.combo = 0;
+          state.totalMistakes += 1;
+          state.currentStrokeMistakes += 1;
+          state.charStats[state.currentIndex].mistakes += 1;
+          updateComboUI();
+          triggerMistakeFeedback();
+        },
+        onCorrectStroke: (strokeData) => {
+          // 計算該筆得分：一次寫對拿滿分，有失誤依比例扣分但仍給予鼓勵分數
+          const m = state.currentStrokeMistakes;
+          const strokeScore = m === 0 ? 1.0 : (m === 1 ? 0.65 : (m === 2 ? 0.35 : 0.15));
+          state.totalStrokes += 1;
+          state.earnedStrokePoints += strokeScore;
+          state.currentStrokeMistakes = 0;
+
+          state.combo += 1;
+          if (state.combo > state.maxCombo) state.maxCombo = state.combo;
+          updateComboUI();
+          sound.playStroke(state.combo);
+
+          const doneStrokes = strokeData.strokeNum + 1;
+          document.getElementById('stroke-label').textContent = `筆畫：${doneStrokes} / ${strokeCount}`;
+        },
+        onComplete: () => {
+          sound.playCharDone();
+          boardBox.classList.add('success-flash');
+          document.getElementById('progress-fill').style.width =
+            `${((state.currentIndex + 1) / state.queue.length) * 100}%`;
+
+          // 停頓 0.45 秒讓小孩看到完整漂亮的字，隨即緊接跳下一字
+          setTimeout(() => {
+            nextCharacter();
+          }, 450);
+        }
+      });
+    }
+
+    function nextCharacter() {
+      state.currentIndex += 1;
+      if (state.currentIndex < state.queue.length) {
+        loadCurrentCharacter();
+      } else {
+        finishSession();
+      }
+    }
+
+    // 練習中輔助按鈕
+    document.getElementById('btn-hint').addEventListener('click', () => {
+      if (state.writer) state.writer.hint();
+    });
+
+    document.getElementById('btn-demo').addEventListener('click', () => {
+      if (!state.writer) return;
+      state.writer.animateCharacter({
+        onComplete: () => {
+          // 看完完整示範後重新開始該字測驗
+          loadCurrentCharacter();
+        }
+      });
+    });
+
+    document.getElementById('btn-exit').addEventListener('click', () => {
+      showScreen('setup');
+    });
+
+    /* =========================================================
+       5. 100分制結算、錯字整理與歡慶頒獎
+       ========================================================= */
+    function finishSession() {
+      showScreen('result');
+      sound.playFanfare();
+      launchConfetti();
+
+      const rawScore = state.totalStrokes > 0
+        ? Math.round((state.earnedStrokePoints / state.totalStrokes) * 100)
+        : 100;
+      const finalScore = Math.min(100, Math.max(0, rawScore));
+
+      // 數字滾動動畫
+      const scoreEl = document.getElementById('final-score');
+      let currentNum = 0;
+      const step = Math.max(1, Math.ceil(finalScore / 25));
+      const timer = setInterval(() => {
+        currentNum += step;
+        if (currentNum >= finalScore) {
+          currentNum = finalScore;
+          clearInterval(timer);
+        }
+        scoreEl.textContent = currentNum;
+      }, 20);
+
+      // 獎盃與鼓勵評語
+      const trophyEl = document.getElementById('trophy-icon');
+      const starsEl = document.getElementById('stars-row');
+      const praiseEl = document.getElementById('praise-title');
+
+      if (finalScore === 100) {
+        trophyEl.textContent = '👑';
+        starsEl.textContent = '⭐⭐⭐';
+        praiseEl.textContent = '滿分神射手！全部一筆不錯！';
+      } else if (finalScore >= 85) {
+        trophyEl.textContent = '🏆';
+        starsEl.textContent = '⭐⭐⭐';
+        praiseEl.textContent = '表現超棒！筆順非常熟練喔！';
+      } else if (finalScore >= 70) {
+        trophyEl.textContent = '🥇';
+        starsEl.textContent = '⭐⭐';
+        praiseEl.textContent = '很不錯喔！再把錯字練熟就滿分了！';
+      } else {
+        trophyEl.textContent = '🎖️';
+        starsEl.textContent = '⭐';
+        praiseEl.textContent = '完成挑戰！趁勝追擊再練一次吧！';
+      }
+
+      document.getElementById('stat-chars').textContent = `${state.queue.length} 字`;
+      document.getElementById('stat-mistakes').textContent = `${state.totalMistakes} 次`;
+      document.getElementById('stat-combo').textContent = `${state.maxCombo} 連擊`;
+
+      // 彙整寫錯的字（去重複）
+      const wrongUnique = [...new Set(
+        state.charStats.filter(item => item.mistakes > 0).map(item => item.char)
+      )];
+
+      const wrongBox = document.getElementById('wrong-box');
+      const wrongList = document.getElementById('wrong-chars-list');
+      const btnRetryWrong = document.getElementById('btn-retry-wrong');
+
+      if (wrongUnique.length > 0) {
+        wrongBox.style.display = 'block';
+        wrongList.innerHTML = wrongUnique.map(c => `<span class="wrong-tag">${c}</span>`).join('');
+        btnRetryWrong.style.display = 'inline-flex';
+        btnRetryWrong.onclick = () => {
+          sound.unlock();
+          startSession(wrongUnique);
+        };
+      } else {
+        wrongBox.style.display = 'none';
+        btnRetryWrong.style.display = 'none';
+      }
+    }
+
+    document.getElementById('btn-retry-all').addEventListener('click', () => {
+      sound.unlock();
+      startSession([...state.queue]);
+    });
+
+    document.getElementById('btn-back-setup').addEventListener('click', () => {
+      showScreen('setup');
+    });
+
+    /* =========================================================
+       6. 頒獎彩帶慶祝動畫（零依賴純 Canvas）
+       ========================================================= */
+    function launchConfetti() {
+      const canvas = document.getElementById('confetti-canvas');
+      const ctx = canvas.getContext('2d');
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+
+      const colors = ['#f59e0b', '#3b82f6', '#10b981', '#ef4444', '#8b5cf6', '#ec4899'];
+      const particles = Array.from({ length: 90 }, () => ({
+        x: Math.random() * canvas.width,
+        y: Math.random() * canvas.height - canvas.height,
+        w: Math.random() * 10 + 6,
+        h: Math.random() * 6 + 4,
+        color: colors[Math.floor(Math.random() * colors.length)],
+        vy: Math.random() * 3 + 2.5,
+        vx: (Math.random() - 0.5) * 2.5,
+        angle: Math.random() * 360,
+        spin: (Math.random() - 0.5) * 8
+      }));
+
+      let frames = 0;
+      function draw() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        particles.forEach(p => {
+          p.y += p.vy;
+          p.x += p.vx;
+          p.angle += p.spin;
+          ctx.save();
+          ctx.translate(p.x, p.y);
+          ctx.rotate((p.angle * Math.PI) / 180);
+          ctx.fillStyle = p.color;
+          ctx.fillRect(-p.w / 2, -p.h / 2, p.w, p.h);
+          ctx.restore();
+        });
+        frames += 1;
+        if (frames < 210) {
+          requestAnimationFrame(draw);
+        } else {
+          ctx.clearRect(0, 0, canvas.width, canvas.height);
+        }
+      }
+      draw();
+    }
+  </script>
+</body>
+</html>
