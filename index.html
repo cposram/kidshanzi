@@ -52,7 +52,6 @@
       display: flex;
     }
 
-    /* ========== 1. 出題設定畫面 ========== */
     .setup-card {
       background: var(--card);
       width: 100%;
@@ -163,7 +162,6 @@
       cursor: not-allowed;
     }
 
-    /* ========== 2. 練習闖關畫面 ========== */
     .practice-header {
       width: 100%;
       max-width: 680px;
@@ -256,7 +254,6 @@
       opacity: 1;
     }
 
-    /* 核心寫字框：鎖定 iPad 觸控滑動 */
     .board-container {
       position: relative;
       width: min(74vw, 54vh, 430px);
@@ -325,7 +322,6 @@
       background: #e2e8f0;
     }
 
-    /* ========== 3. 頒獎結算畫面 ========== */
     #confetti-canvas {
       position: fixed;
       inset: 0;
@@ -461,7 +457,6 @@
 </head>
 <body>
 
-  <!-- 畫面 1：家長出題區 -->
   <section id="screen-setup" class="screen active">
     <div class="setup-card">
       <h1>✍️ 生字筆順闖關</h1>
@@ -480,7 +475,6 @@
     </div>
   </section>
 
-  <!-- 畫面 2：小孩連續書寫區 -->
   <section id="screen-practice" class="screen">
     <div class="practice-header">
       <button id="btn-exit" class="btn-exit">✕ 換字</button>
@@ -501,7 +495,6 @@
     </div>
 
     <div id="board-box" class="board-container">
-      <!-- 米字格輔助底線 -->
       <svg class="grid-svg" viewBox="0 0 100 100" preserveAspectRatio="none">
         <line x1="0" y1="0" x2="100" y2="100" stroke="#e2e8f0" stroke-width="0.6" stroke-dasharray="2,2" />
         <line x1="100" y1="0" x2="0" y2="100" stroke="#e2e8f0" stroke-width="0.6" stroke-dasharray="2,2" />
@@ -517,7 +510,6 @@
     </div>
   </section>
 
-  <!-- 畫面 3：恭喜頒獎結算區 -->
   <canvas id="confetti-canvas"></canvas>
   <section id="screen-result" class="screen">
     <div class="result-card">
@@ -542,7 +534,7 @@
       </div>
 
       <div id="wrong-box" class="wrong-box" style="display: none;">
-        <div class="wrong-box-title">📌 需要加強的生字（點擊可查看）：</div>
+        <div class="wrong-box-title">📌 需要加強的生字：</div>
         <div id="wrong-chars-list" class="wrong-chars-list"></div>
       </div>
 
@@ -555,9 +547,6 @@
   </section>
 
   <script>
-    /* =========================================================
-       1. Web Audio API 音效引擎（免外部音檔，支援 iPad 解鎖）
-       ========================================================= */
     class SoundEngine {
       constructor() {
         this.ctx = null;
@@ -573,7 +562,6 @@
         }
       }
 
-      // 寫錯告警音：「嘟—嘟」低頻雙音
       playMistake() {
         if (!this.ctx) return;
         const now = this.ctx.currentTime;
@@ -591,14 +579,13 @@
         });
       }
 
-      // 寫對一筆：隨連擊數微微升調的清脆水滴音
       playStroke(combo) {
         if (!this.ctx) return;
         const now = this.ctx.currentTime;
         const osc = this.ctx.createOscillator();
         const gain = this.ctx.createGain();
         osc.type = 'sine';
-        const baseFreq = 523.25 * Math.pow(1.03, Math.min(combo, 15)); // C5 往上微升
+        const baseFreq = 523.25 * Math.pow(1.03, Math.min(combo, 15));
         osc.frequency.setValueAtTime(baseFreq, now);
         osc.frequency.exponentialRampToValueAtTime(baseFreq * 1.25, now + 0.08);
         gain.gain.setValueAtTime(0.15, now);
@@ -609,7 +596,6 @@
         osc.stop(now + 0.09);
       }
 
-      // 單字完成：輕快雙音提示
       playCharDone() {
         if (!this.ctx) return;
         const now = this.ctx.currentTime;
@@ -627,11 +613,9 @@
         });
       }
 
-      // 全部過關：歡慶頒獎交響樂
       playFanfare() {
         if (!this.ctx) return;
         const now = this.ctx.currentTime;
-        // 旋律：Do Mi Sol Do(高) - Sol Do(高)
         const notes = [
           { f: 523.25, t: 0.00, d: 0.14 },
           { f: 659.25, t: 0.14, d: 0.14 },
@@ -657,9 +641,6 @@
 
     const sound = new SoundEngine();
 
-    /* =========================================================
-       2. 狀態管理與字庫載入器（優先讀取本地教育部 JSON）
-       ========================================================= */
     const state = {
       queue: [],
       currentIndex: 0,
@@ -671,18 +652,25 @@
       earnedStrokePoints: 0,
       totalMistakes: 0,
       currentStrokeMistakes: 0,
-      charStats: [] // [{ char, mistakes }]
+      charStats: []
     };
 
-    // 優先抓自己匯出的 ./data/{字}.json，若無該字則自動退回 CDN 備援不中斷
+    // 一次載入並快取單一總字庫 hanzi_db.json，找不到的字自動退回 CDN 備援
+    let localDbPromise = null;
+    function getLocalDb() {
+      if (!localDbPromise) {
+        localDbPromise = fetch('./hanzi_db.json')
+          .then(res => (res.ok ? res.json() : {}))
+          .catch(() => ({}));
+      }
+      return localDbPromise;
+    }
+
     function customCharDataLoader(char, onComplete, onError) {
-      fetch(`./data/${encodeURIComponent(char)}.json`)
-        .then(res => {
-          if (!res.ok) throw new Error('Local JSON not found');
-          return res.json();
-        })
-        .then(data => onComplete(data))
-        .catch(() => {
+      getLocalDb().then(db => {
+        if (db && db[char]) {
+          onComplete(db[char]);
+        } else {
           fetch(`https://cdn.jsdelivr.net/npm/hanzi-writer-data@2.0/${encodeURIComponent(char)}.json`)
             .then(res => {
               if (!res.ok) throw new Error('CDN JSON not found');
@@ -690,12 +678,10 @@
             })
             .then(data => onComplete(data))
             .catch(err => onError(err));
-        });
+        }
+      });
     }
 
-    /* =========================================================
-       3. DOM 元素綁定與出題邏輯
-       ========================================================= */
     const screens = {
       setup: document.getElementById('screen-setup'),
       practice: document.getElementById('screen-practice'),
@@ -728,7 +714,6 @@
       }
     }
 
-    // 支援網址參數 ?words=春眠不覺曉 或 localStorage 自動還原
     const urlParams = new URLSearchParams(window.location.search);
     const savedWords = urlParams.get('words') || localStorage.getItem('hanzi_last_words') || '';
     if (savedWords) {
@@ -739,7 +724,7 @@
     inputEl.addEventListener('input', updatePreview);
 
     btnStart.addEventListener('click', () => {
-      sound.unlock(); // 關鍵：在點擊當下解鎖 iPad 音效
+      sound.unlock();
       const chars = extractChineseChars(inputEl.value);
       if (chars.length === 0) return;
       localStorage.setItem('hanzi_last_words', inputEl.value);
@@ -747,9 +732,6 @@
       startSession(chars);
     });
 
-    /* =========================================================
-       4. 連續練習核心引擎
-       ========================================================= */
     const boardBox = document.getElementById('board-box');
     const writerMount = document.getElementById('writer-mount');
     const badgeCombo = document.getElementById('badge-combo');
@@ -784,7 +766,7 @@
     function triggerMistakeFeedback() {
       sound.playMistake();
       boardBox.classList.remove('mistake-flash');
-      void boardBox.offsetWidth; // 強制重繪讓動畫可連續觸發
+      void boardBox.offsetWidth;
       boardBox.classList.add('mistake-flash');
 
       badgeAlert.classList.add('show');
@@ -817,8 +799,8 @@
         outlineColor: '#cbd5e1',
         highlightColor: '#3b82f6',
         drawingColor: '#2563eb',
-        drawingWidth: Math.max(14, Math.round(size * 0.048)), // 加粗筆跡適合觸控與手寫筆
-        showHintAfterMisses: 2, // 錯 2 次自動演示該筆，防卡關
+        drawingWidth: Math.max(14, Math.round(size * 0.048)),
+        showHintAfterMisses: 2,
         highlightOnComplete: true,
         charDataLoader: customCharDataLoader,
         onLoadCharDataSuccess: (data) => {
@@ -827,7 +809,6 @@
           runQuiz(strokeCount);
         },
         onLoadCharDataError: () => {
-          // 若遇極罕見字無資料則自動跳過，確保流程不中斷
           nextCharacter();
         }
       });
@@ -844,7 +825,6 @@
           triggerMistakeFeedback();
         },
         onCorrectStroke: (strokeData) => {
-          // 計算該筆得分：一次寫對拿滿分，有失誤依比例扣分但仍給予鼓勵分數
           const m = state.currentStrokeMistakes;
           const strokeScore = m === 0 ? 1.0 : (m === 1 ? 0.65 : (m === 2 ? 0.35 : 0.15));
           state.totalStrokes += 1;
@@ -865,7 +845,6 @@
           document.getElementById('progress-fill').style.width =
             `${((state.currentIndex + 1) / state.queue.length) * 100}%`;
 
-          // 停頓 0.45 秒讓小孩看到完整漂亮的字，隨即緊接跳下一字
           setTimeout(() => {
             nextCharacter();
           }, 450);
@@ -882,7 +861,6 @@
       }
     }
 
-    // 練習中輔助按鈕
     document.getElementById('btn-hint').addEventListener('click', () => {
       if (state.writer) state.writer.hint();
     });
@@ -891,7 +869,6 @@
       if (!state.writer) return;
       state.writer.animateCharacter({
         onComplete: () => {
-          // 看完完整示範後重新開始該字測驗
           loadCurrentCharacter();
         }
       });
@@ -901,9 +878,6 @@
       showScreen('setup');
     });
 
-    /* =========================================================
-       5. 100分制結算、錯字整理與歡慶頒獎
-       ========================================================= */
     function finishSession() {
       showScreen('result');
       sound.playFanfare();
@@ -914,7 +888,6 @@
         : 100;
       const finalScore = Math.min(100, Math.max(0, rawScore));
 
-      // 數字滾動動畫
       const scoreEl = document.getElementById('final-score');
       let currentNum = 0;
       const step = Math.max(1, Math.ceil(finalScore / 25));
@@ -927,7 +900,6 @@
         scoreEl.textContent = currentNum;
       }, 20);
 
-      // 獎盃與鼓勵評語
       const trophyEl = document.getElementById('trophy-icon');
       const starsEl = document.getElementById('stars-row');
       const praiseEl = document.getElementById('praise-title');
@@ -954,7 +926,6 @@
       document.getElementById('stat-mistakes').textContent = `${state.totalMistakes} 次`;
       document.getElementById('stat-combo').textContent = `${state.maxCombo} 連擊`;
 
-      // 彙整寫錯的字（去重複）
       const wrongUnique = [...new Set(
         state.charStats.filter(item => item.mistakes > 0).map(item => item.char)
       )];
@@ -986,9 +957,6 @@
       showScreen('setup');
     });
 
-    /* =========================================================
-       6. 頒獎彩帶慶祝動畫（零依賴純 Canvas）
-       ========================================================= */
     function launchConfetti() {
       const canvas = document.getElementById('confetti-canvas');
       const ctx = canvas.getContext('2d');
